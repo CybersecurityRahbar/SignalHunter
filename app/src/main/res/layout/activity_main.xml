@@ -5,31 +5,19 @@
     android:layout_height="match_parent"
     android:background="#0D0D0D">
 
-    <!-- البوصلة المخصصة -->
-    <com.example.signalhunter.ui.CompassView
-        android:id="@+id/compassView"
-        android:layout_width="280dp"
-        android:layout_height="280dp"
-        android:layout_marginTop="40dp"
+    <!-- الرادار -->
+    <com.example.signalhunter.ui.RadarView
+        android:id="@+id/radarView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/tvStatus" />
 
-    <!-- مؤشر مستوى الخطر (رقمياً) -->
-    <TextView
-        android:id="@+id/tvThreatValue"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:text="0.0"
-        android:textColor="#00FF00"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/compassView" />
-
-    <!-- حالة النشاط (كاميرا / واي فاي / آمن) -->
+    <!-- مؤشر الحالة العلوي -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
@@ -37,51 +25,54 @@
         android:layout_marginTop="8dp"
         android:text="🟢 انتظر المعايرة..."
         android:textColor="#AAAAAA"
-        android:textSize="22sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvThreatValue" />
+        app:layout_constraintTop_toBottomOf="@+id/radarView" />
 
-    <!-- زر المعايرة (لتصفير الضوضاء البيئية) -->
+    <!-- زر المعايرة -->
     <Button
         android:id="@+id/btnCalibrate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="12dp"
         android:backgroundTint="#FF5722"
-        android:text="معايرة المستشعر (Calibrate)"
+        android:text="معايرة الرادار المتقدم"
         android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvStatus" />
 
-    <!-- ✅ عنصر عرض الأخطاء (الجديد) - يظهر باللون الأحمر إذا حدث خطأ في C++ -->
+    <!-- جدول التفاصيل القوية (المسافات والترددات) -->
     <TextView
-        android:id="@+id/tvError"
-        android:layout_width="wrap_content"
+        android:id="@+id/tvDetails"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:padding="8dp"
-        android:text=""
-        android:textColor="#FF0000"
-        android:textSize="14sp"
-        android:visibility="visible"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:padding="12dp"
+        android:background="#1A1A1A"
+        android:textColor="#00FFCC"
+        android:textSize="13sp"
+        android:fontFamily="monospace"
+        android:text="⏳ جاري تهيئة المستشعرات..."
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/btnCalibrate" />
 
-    <!-- إشارة إلى اتجاه الإشارة القوية -->
+    <!-- عرض الأخطاء -->
     <TextView
-        android:id="@+id/tvDirectionHint"
+        android:id="@+id/tvError"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="🧭 قم بتدوير الهاتف ببطء"
-        android:textColor="#666666"
+        android:layout_marginTop="8dp"
+        android:text=""
+        android:textColor="#FF0000"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvError" />
+        app:layout_constraintTop_toBottomOf="@+id/tvDetails" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
