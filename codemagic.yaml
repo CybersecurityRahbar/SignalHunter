@@ -4,22 +4,26 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
-      groups:
-        - google_play
       vars:
         PACKAGE_NAME: "com.example.signalhunter"
-      # تم حذف سطر "sdk: latest" لأنه غير معترف به هنا
     scripts:
-      - name: Set up Android SDK
+      - name: 🔍 1. فحص هيكل المجلدات
         script: |
-          echo "sdk.dir=$HOME/programs/android-sdk-macosx" > local.properties
-      - name: Build Release APK
+          echo "=== محتويات الجذر ==="
+          ls -la
+          echo "=== محتويات مجلد التطبيق ==="
+          ls -la app/
+          echo "=== محتويات مجلد C++ ==="
+          ls -la app/src/main/cpp/
+      - name: 🔍 2. فحص صلاحيات ملف Gradle
         script: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease
+          echo "تم منح الصلاحية لـ gradlew"
+      - name: 🔍 3. محاولة قراءة مهام Gradle (هنا سيظهر الخطأ الحقيقي)
+        script: |
+          ./gradlew tasks --no-daemon --stacktrace || exit 1
+      - name: 🏗️ 4. بناء التطبيق
+        script: |
+          ./gradlew assembleRelease --stacktrace
     artifacts:
       - app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients:
-          - your_email@example.com  # غير هذا إلى بريدك الإلكتروني
