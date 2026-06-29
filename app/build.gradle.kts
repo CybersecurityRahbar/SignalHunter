@@ -4,7 +4,6 @@ plugins {
 }
 
 android {
-    ndkVersion = "26.1.10909125" // تثبيت الإصدار لتجنب أخطاء البناء
     namespace = "com.example.signalhunter"
     compileSdk = 34
 
@@ -14,13 +13,6 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17 -frtti -fexceptions"
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-            }
-        }
     }
 
     buildTypes {
@@ -30,12 +22,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-    }
-
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
         }
     }
 
