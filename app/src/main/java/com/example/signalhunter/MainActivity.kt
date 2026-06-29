@@ -9,12 +9,15 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.signalhunter.ui.CompassView
+import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
@@ -33,17 +36,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var baselineZ = 0f
     private var isCalibrated = false
 
-    // تعريف الدالة الخارجية (سيتم تحميل المكتبة لاحقاً)
-    external fun calculateThreatLevel(
-        x: FloatArray, y: FloatArray, z: FloatArray,
-        baselineX: Float, baselineY: Float, baselineZ: Float
-    ): Float
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // ربط عناصر الواجهة أولاً
+        // ربط العناصر
         compassView = findViewById(R.id.compassView)
         tvThreatValue = findViewById(R.id.tvThreatValue)
         tvStatus = findViewById(R.id.tvStatus)
@@ -51,33 +48,29 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         tvError = findViewById(R.id.tvError)
         btnCalibrate = findViewById(R.id.btnCalibrate)
 
-        // **الآن نحمل المكتبة بأمان**
-        try {
-            System.loadLibrary("signalhunter")
-            tvError.text = "✅ مكتبة C++ محملة بنجاح"
-            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
-        } catch (e: UnsatisfiedLinkError) {
-            tvError.text = "❌ فشل تحميل المكتبة: ${e.message}"
-            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-            e.printStackTrace()
-        }
+        tvError.text = "⏳ جاري تهيئة المستشعرات..."
 
-        // تهيئة المستشعرات
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val magnetSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        // تأخير بسيط لضمان استقرار الواجهة (لتجنب تعطل سامسونج)
+        Handler(Looper.getMainLooper()).postDelayed({
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+            val magnetSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+
+            if (magnetSensor != null) {
+                sensorManager.registerListener(this, magnetSensor, SensorManager.SENSOR_DELAY_GAME)
+                tvError.text = "✅ المستشعر جاهز، اضغط على معايرة"
+                tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+            } else {
+                tvError.text = "❌ هذا الجهاز لا يدعم المغناطيسومتر!"
+                tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+            }
+        }, 500) // تأخير نصف ثانية
 
         // طلب الأذونات
         checkAndRequestPermissions()
 
         // زر المعايرة
         btnCalibrate.setOnClickListener {
-            if (isCalibrated) {
-                baselineX = magnetValues[0]
-                baselineY = magnetValues[1]
-                baselineZ = magnetValues[2]
-                tvStatus.text = "🔄 تمت إعادة المعايرة"
-                tvError.text = ""  // مسح أي خطأ سابق
-            } else {
+            if (!isCalibrated) {
                 baselineX = magnetValues[0]
                 baselineY = magnetValues[1]
                 baselineZ = magnetValues[2]
@@ -85,13 +78,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 tvStatus.text = "✅ جاهز للكشف"
                 tvError.text = ""
                 tvDirectionHint.text = "🧭 حرك الهاتف حول الغرفة"
+            } else {
+                // إعادة معايرة
+                baselineX = magnetValues[0]
+                baselineY = magnetValues[1]
+                baselineZ = magnetValues[2]
+                tvStatus.text = "🔄 تمت إعادة المعايرة"
+                tvError.text = ""
             }
-        }
-
-        if (magnetSensor != null) {
-            sensorManager.registerListener(this, magnetSensor, SensorManager.SENSOR_DELAY_FASTEST)
-        } else {
-            tvStatus.text = "❌ هذا الجهاز لا يدعم المغناطيسومتر!"
         }
     }
 
@@ -119,60 +113,49 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 magnetValues[1] = it.values[1]
                 magnetValues[2] = it.values[2]
 
+                // تحديث البوصلة
                 compassView.updateDirection(magnetValues)
 
                 if (isCalibrated) {
-                    try {
-                        val threat = calculateThreatLevel(
-                            floatArrayOf(magnetValues[0]),
-                            floatArrayOf(magnetValues[1]),
-                            floatArrayOf(magnetValues[2]),
-                            baselineX, baselineY, baselineZ
-                        )
+                    // حساب مستوى التهديد مباشرة في كوتلن (بدون C++)
+                    val filteredX = magnetValues[0] - baselineX
+                    val filteredY = magnetValues[1] - baselineY
+                    val filteredZ = magnetValues[2] - baselineZ
+                    val magnitude = sqrt(filteredX * filteredX + filteredY * filteredY + filteredZ * filteredZ)
 
-                        runOnUiThread {
-                            tvThreatValue.text = String.format("%.2f", threat)
-                            tvError.text = ""  // مسح أي خطأ سابق
+                    val threat = when {
+                        magnitude > 8.0f -> 90.0f
+                        magnitude > 4.0f -> 50.0f
+                        magnitude > 1.5f -> 20.0f
+                        else -> 0.0f
+                    }
 
-                            when {
-                                threat > 50.0f -> {
-                                    tvStatus.text = "🔴 تهديد عالي (كاميرا / واي فاي)"
-                                    tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-                                    tvDirectionHint.text = "⚠️ مصدر الإشارة قريب جداً!"
-                                }
-                                threat > 20.0f -> {
-                                    tvStatus.text = "🟠 نشاط مشبوه (بلوتوث / ميكروفون)"
-                                    tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark))
-                                    tvDirectionHint.text = "📡 حرك الهاتف لتحديد المصدر"
-                                }
-                                threat > 5.0f -> {
-                                    tvStatus.text = "🟡 تقلبات طفيفة (أجهزة كهربائية)"
-                                    tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_light))
-                                    tvDirectionHint.text = "🧭 ابحث في اتجاه مختلف"
-                                }
-                                else -> {
-                                    tvStatus.text = "🟢 بيئة آمنة"
-                                    tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
-                                    tvDirectionHint.text = "✅ لا يوجد نشاط كهرومغناطيسي خفي"
-                                }
+                    runOnUiThread {
+                        tvThreatValue.text = String.format("%.2f", threat)
+                        tvError.text = "" // مسح أي خطأ
+
+                        when {
+                            threat > 50.0f -> {
+                                tvStatus.text = "🔴 تهديد عالي (كاميرا / واي فاي)"
+                                tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+                                tvDirectionHint.text = "⚠️ مصدر الإشارة قريب جداً!"
+                            }
+                            threat > 20.0f -> {
+                                tvStatus.text = "🟠 نشاط مشبوه (بلوتوث / ميكروفون)"
+                                tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark))
+                                tvDirectionHint.text = "📡 حرك الهاتف لتحديد المصدر"
+                            }
+                            threat > 5.0f -> {
+                                tvStatus.text = "🟡 تقلبات طفيفة"
+                                tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_light))
+                                tvDirectionHint.text = "🧭 ابحث في اتجاه مختلف"
+                            }
+                            else -> {
+                                tvStatus.text = "🟢 بيئة آمنة"
+                                tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_light))
+                                tvDirectionHint.text = "✅ لا يوجد نشاط كهرومغناطيسي خفي"
                             }
                         }
-                    } catch (e: UnsatisfiedLinkError) {
-                        runOnUiThread {
-                            tvError.text = "❌ خطأ في مكتبة C++: ${e.message}"
-                            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-                        }
-                        e.printStackTrace()
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            tvError.text = "❌ خطأ عام: ${e.message}"
-                            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
-                        }
-                        e.printStackTrace()
-                    }
-                } else {
-                    runOnUiThread {
-                        tvStatus.text = "⏳ اضغط على 'معايرة' أولاً"
                     }
                 }
             }
@@ -183,6 +166,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        sensorManager.unregisterListener(this)
+        if (::sensorManager.isInitialized) {
+            sensorManager.unregisterListener(this)
+        }
     }
 }
