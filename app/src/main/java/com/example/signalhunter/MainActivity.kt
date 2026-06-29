@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var tvThreatValue: TextView
     private lateinit var tvStatus: TextView
     private lateinit var tvDirectionHint: TextView
-    private lateinit var tvError: TextView  // ✅ جديد: لعرض الأخطاء بدلاً من الانهيار
+    private lateinit var tvError: TextView
     private lateinit var btnCalibrate: Button
 
     private lateinit var sensorManager: SensorManager
@@ -33,17 +33,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var baselineZ = 0f
     private var isCalibrated = false
 
-    init {
-        try {
-            System.loadLibrary("signalhunter")
-            tvError?.text = "✅ مكتبة C++ محملة بنجاح"
-        } catch (e: UnsatisfiedLinkError) {
-            // إذا فشل التحميل، اعرض الخطأ على الشاشة
-            tvError?.text = "❌ فشل تحميل المكتبة: ${e.message}"
-            e.printStackTrace()
-        }
-    }
-
+    // تعريف الدالة الخارجية (سيتم تحميل المكتبة لاحقاً)
     external fun calculateThreatLevel(
         x: FloatArray, y: FloatArray, z: FloatArray,
         baselineX: Float, baselineY: Float, baselineZ: Float
@@ -53,18 +43,33 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // ربط عناصر الواجهة أولاً
         compassView = findViewById(R.id.compassView)
         tvThreatValue = findViewById(R.id.tvThreatValue)
         tvStatus = findViewById(R.id.tvStatus)
         tvDirectionHint = findViewById(R.id.tvDirectionHint)
-        tvError = findViewById(R.id.tvError)  // ✅ تأكد من إضافته في الـ XML
+        tvError = findViewById(R.id.tvError)
         btnCalibrate = findViewById(R.id.btnCalibrate)
 
+        // **الآن نحمل المكتبة بأمان**
+        try {
+            System.loadLibrary("signalhunter")
+            tvError.text = "✅ مكتبة C++ محملة بنجاح"
+            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_green_dark))
+        } catch (e: UnsatisfiedLinkError) {
+            tvError.text = "❌ فشل تحميل المكتبة: ${e.message}"
+            tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+            e.printStackTrace()
+        }
+
+        // تهيئة المستشعرات
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val magnetSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
+        // طلب الأذونات
         checkAndRequestPermissions()
 
+        // زر المعايرة
         btnCalibrate.setOnClickListener {
             if (isCalibrated) {
                 baselineX = magnetValues[0]
@@ -118,7 +123,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
                 if (isCalibrated) {
                     try {
-                        // ✅ حماية ضد انهيار JNI
                         val threat = calculateThreatLevel(
                             floatArrayOf(magnetValues[0]),
                             floatArrayOf(magnetValues[1]),
@@ -154,14 +158,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                             }
                         }
                     } catch (e: UnsatisfiedLinkError) {
-                        // ✅ إذا فشلت دالة C++، اعرض الخطأ بدلاً من الانهيار
                         runOnUiThread {
                             tvError.text = "❌ خطأ في مكتبة C++: ${e.message}"
                             tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
                         }
                         e.printStackTrace()
                     } catch (e: Exception) {
-                        // ✅ أي خطأ آخر
                         runOnUiThread {
                             tvError.text = "❌ خطأ عام: ${e.message}"
                             tvError.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
