@@ -48,13 +48,28 @@
         android:id="@+id/btnCalibrate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
+        android:layout_marginTop="30dp"
         android:backgroundTint="#FF5722"
         android:text="معايرة المستشعر (Calibrate)"
         android:textColor="#FFFFFF"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/tvStatus" />
+
+    <!-- ✅ عنصر عرض الأخطاء (الجديد) - يظهر باللون الأحمر إذا حدث خطأ في C++ -->
+    <TextView
+        android:id="@+id/tvError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:padding="8dp"
+        android:text=""
+        android:textColor="#FF0000"
+        android:textSize="14sp"
+        android:visibility="visible"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnCalibrate" />
 
     <!-- إشارة إلى اتجاه الإشارة القوية -->
     <TextView
@@ -67,6 +82,6 @@
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/btnCalibrate" />
+        app:layout_constraintTop_toBottomOf="@+id/tvError" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
