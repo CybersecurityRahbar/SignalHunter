@@ -4,9 +4,11 @@ workflows:
     max_build_duration: 60
     instance_type: mac_mini_m1
     environment:
+      groups:
+        - google_play
       vars:
         PACKAGE_NAME: "com.example.signalhunter"
-      sdk: latest
+      # تم حذف سطر "sdk: latest" لأنه غير معترف به هنا
     scripts:
       - name: Set up Android SDK
         script: |
@@ -20,4 +22,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - your_email@example.com  # غير هذا إلى بريدك لاستلام الـ APK
+          - your_email@example.com  # غير هذا إلى بريدك الإلكتروني
